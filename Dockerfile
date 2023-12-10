@@ -28,7 +28,7 @@ RUN docker-php-ext-install gd pdo_mysql opcache session pdo intl sockets sodium 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY ./server-config/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY ./docker/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 RUN a2enmod rewrite &&\
     service apache2 restart
