@@ -1,44 +1,59 @@
-# Use the official PHP image as the base image
 FROM php:8.1-apache
 
-# Set the working directory in the container
-WORKDIR /var/www/html
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions && sync && \
+    install-php-extensions pdo_mysql zip
+
 
 # Install dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    git \
-    libzip-dev \
-    zlib1g-dev \
+RUN apt-get update && apt-get install -y \
+    build-essential \
     libpng-dev \
-    libjpeg-dev \
+    libjpeg62-turbo-dev \
     libfreetype6-dev \
-    libexif-dev
+    locales \
+    zip \
+    jpegoptim optipng pngquant gifsicle \
+    vim \
+    unzip \
+    curl libicu-dev libsodium-dev libsodium23 libzip-dev
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql zip pcntl gd exif
+RUN docker-php-ext-install gd pdo_mysql opcache session pdo intl sockets sodium zip
 
-# Install Composer globally
+# RUN apt-get install -y supervisor
+# RUN mkdir -p /var/log/supervisor
+
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY ./server-config/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+RUN a2enmod rewrite &&\
+    service apache2 restart
+
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+WORKDIR /var/www/html
 
-# Copy the composer files and install dependencies
-COPY composer.json composer.lock /var/www/html/
-RUN composer install --no-scripts --no-autoloader
+# a little hack for production
+# COPY  composer.json ./composer.json
 
-# Copy the application files to the container
-COPY . /var/www/html/
+# COPY . /var/www/html
+COPY . /var/www/html
 
-# Generate the autoload files
-RUN composer dump-autoload --optimize
+#  RUN composer update
+RUN composer install --ignore-platform-reqs --no-interaction --prefer-dist
 
-# Set the appropriate permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN chmod -R 777 storage/*
+# for production
+# RUN composer install
+
+
+RUN chmod -R 777 storage
 # RUN chmod -R 777 bootstrap/cache
 
-# Expose port 80 for the web server
-EXPOSE 80
 
-# Start Apache
-#CMD ["apache2-foreground"]
+EXPOSE 80
+# RUN service supervisor start
