@@ -1,37 +1,41 @@
-# Use an official PHP runtime as a parent image
+# Use the official PHP image as the base image
 FROM php:8.1-apache
 
-# Set the working directory to /var/www/html
+# Set the working directory in the container
 WORKDIR /var/www/html
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    unzip \
+RUN apt-get update && \
+    apt-get install -y \
     git \
-    && docker-php-ext-install zip pdo_mysql \
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug
+    libzip-dev \
+    zlib1g-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libexif-dev
 
-# Copy composer.lock and composer.json to the working directory
-COPY composer.lock composer.json /var/www/html/
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql zip pcntl gd exif
 
-# Install composer dependencies
+# Install Composer globally
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copy the composer files and install dependencies
+COPY composer.json composer.lock /var/www/html/
 RUN composer install --no-scripts --no-autoloader
 
-# Copy the application files to the container at /var/www/html
-COPY . /var/www/html
+# Copy the application files to the container
+COPY . /var/www/html/
 
-# Generate autoload files and optimize for production
+# Generate the autoload files
 RUN composer dump-autoload --optimize
 
-# Set up Apache
-RUN a2enmod rewrite
-COPY docker/apache2.conf /etc/apache2/sites-available/000-default.conf
+# Set the appropriate permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Expose port 80
+# Expose port 80 for the web server
 EXPOSE 80
 
-# CMD command to start Apache and run the application
+# Start Apache
 CMD ["apache2-foreground"]
