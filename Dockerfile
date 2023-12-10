@@ -34,8 +34,11 @@ RUN composer dump-autoload --optimize
 # Set the appropriate permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+RUN chmod -R 777 storage/*
+# RUN chmod -R 777 bootstrap/cache
+
 # Expose port 80 for the web server
 EXPOSE 80
 
 # Start Apache
-CMD ["apache2-foreground"]
+#CMD ["apache2-foreground"]
